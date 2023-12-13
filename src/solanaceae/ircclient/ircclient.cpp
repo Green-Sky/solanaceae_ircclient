@@ -1,6 +1,5 @@
 #include "./ircclient.hpp"
 
-#include <bits/iterator_concepts.h>
 #include <libircclient.h>
 #include <libirc_rfcnumeric.h>
 
