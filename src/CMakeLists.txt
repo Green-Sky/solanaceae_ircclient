@@ -52,7 +52,7 @@ target_link_libraries(solanaceae_ircclient_messages PUBLIC
 
 ########################################
 
-add_executable(test2
+add_executable(test2 EXCLUDE_FROM_ALL
 	test2.cpp
 )
 
