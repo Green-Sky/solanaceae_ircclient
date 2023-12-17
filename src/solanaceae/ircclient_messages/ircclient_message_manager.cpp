@@ -9,6 +9,8 @@
 #include <libirc_rfcnumeric.h>
 #include <libircclient.h>
 
+#include "./string_view_split.hpp"
+
 #include <cstdint>
 #include <string_view>
 #include <vector>
@@ -120,20 +122,27 @@ bool IRCClientMessageManager::sendText(const Contact3 c, std::string_view messag
 	}
 
 	{ // actually send
-		std::string tmp_message{message}; // string_view might not be nul terminated
-		if (action) {
-			if (irc_cmd_me(_ircc.getSession(), to_str.c_str(), tmp_message.c_str()) != 0) {
-				std::cerr << "IRCCMM error: failed to send action\n";
-
-				// we dont have offline messaging in irc
-				return false;
+		// split message by line
+		for (const auto& inner_str : MM::std_utils::split(message, "\n")) {
+			if (inner_str.empty()) {
+				continue;
 			}
-		} else {
-			if (irc_cmd_msg(_ircc.getSession(), to_str.c_str(), tmp_message.c_str()) != 0) {
-				std::cerr << "IRCCMM error: failed to send message\n";
 
-				// we dont have offline messaging in irc
-				return false;
+			std::string tmp_message{inner_str}; // string_view might not be nul terminated
+			if (action) {
+				if (irc_cmd_me(_ircc.getSession(), to_str.c_str(), tmp_message.c_str()) != 0) {
+					std::cerr << "IRCCMM error: failed to send action\n";
+
+					// we dont have offline messaging in irc
+					return false;
+				}
+			} else {
+				if (irc_cmd_msg(_ircc.getSession(), to_str.c_str(), tmp_message.c_str()) != 0) {
+					std::cerr << "IRCCMM error: failed to send message\n";
+
+					// we dont have offline messaging in irc
+					return false;
+				}
 			}
 		}
 	}
