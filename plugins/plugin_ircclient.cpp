@@ -82,10 +82,12 @@ SOLANA_PLUGIN_EXPORT void solana_plugin_stop(void) {
 	g_ircc.reset();
 }
 
-SOLANA_PLUGIN_EXPORT void solana_plugin_tick(float delta) {
+SOLANA_PLUGIN_EXPORT float solana_plugin_tick(float delta) {
 	(void)delta;
 	//std::cout << "PLUGIN IRCC TICK()\n";
-	g_ircc->iterate();
+	g_ircc->iterate(); // TODO: return interval, respect dcc etc
+
+	return 1.f; // expect atleast once per sec
 }
 
 } // extern C
