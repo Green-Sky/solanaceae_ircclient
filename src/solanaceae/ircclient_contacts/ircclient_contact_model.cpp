@@ -2,19 +2,18 @@
 
 #include "./components.hpp"
 
-#include <sodium/crypto_hash_sha256.h>
 #include <solanaceae/contact/components.hpp>
+#include <solanaceae/util/utils.hpp>
 
 #include <libirc_rfcnumeric.h>
 #include <libircclient.h>
 
-#include <sodium.h>
+#include <sodium/crypto_hash_sha256.h>
 
 #include <cstdint>
 #include <string_view>
 #include <vector>
 #include <iostream>
-
 
 IRCClientContactModel::IRCClientContactModel(
 	Contact3Registry& cr,
@@ -306,6 +305,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 		channel.emplace_or_replace<Contact::Components::Name>(std::string{joined_channel_name});
 
 		channel.emplace_or_replace<Contact::Components::ID>(getIDHash(joined_channel_name));
+		std::cout << "IRCCCM: joined '" << joined_channel_name << "' id:" << bin2hex(channel.get<Contact::Components::ID>().data) << "\n";
 
 		channel.emplace_or_replace<Contact::Components::ConnectionState>(Contact::Components::ConnectionState::State::cloud);
 
