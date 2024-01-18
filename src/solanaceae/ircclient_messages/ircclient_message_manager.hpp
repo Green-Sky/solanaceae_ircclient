@@ -1,6 +1,5 @@
 #pragma once
 
-#include "solanaceae/contact/contact_model3.hpp"
 #include <solanaceae/ircclient/ircclient.hpp>
 #include <solanaceae/ircclient_contacts/ircclient_contact_model.hpp>
 #include <solanaceae/message3/registry_message_model.hpp>
