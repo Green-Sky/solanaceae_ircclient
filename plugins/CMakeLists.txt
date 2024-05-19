@@ -4,6 +4,13 @@ add_library(plugin_ircclient SHARED
 	./plugin_ircclient.cpp
 )
 
+set_target_properties(plugin_ircclient PROPERTIES
+	C_VISIBILITY_PRESET hidden
+	POSITION_INDEPENDENT_CODE ON
+)
+# probably not enough
+target_compile_definitions(plugin_ircclient PUBLIC ENTT_API_IMPORT)
+
 target_link_libraries(plugin_ircclient PUBLIC
 	solanaceae_plugin
 	solanaceae_ircclient_contacts

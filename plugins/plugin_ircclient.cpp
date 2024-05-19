@@ -4,6 +4,9 @@
 #include <solanaceae/ircclient_contacts/ircclient_contact_model.hpp>
 #include <solanaceae/ircclient_messages/ircclient_message_manager.hpp>
 
+#include <entt/entt.hpp>
+#include <entt/fwd.hpp>
+
 #include <memory>
 #include <iostream>
 
