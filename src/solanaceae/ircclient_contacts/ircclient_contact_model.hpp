@@ -41,6 +41,7 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 	private:
 		// just the hash algo
 		std::vector<uint8_t> getHash(std::string_view value);
+		std::vector<uint8_t> getHash(const std::vector<uint8_t>& value);
 
 	public:
 		// the actually ID is a chain containing the server+channel or server+name
@@ -57,6 +58,7 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 		bool onEvent(const IRCClient::Events::Numeric& e) override;
 		bool onEvent(const IRCClient::Events::Join& e) override;
 		bool onEvent(const IRCClient::Events::Part& e) override;
+		bool onEvent(const IRCClient::Events::Topic& e) override;
 		bool onEvent(const IRCClient::Events::Quit& e) override;
 		bool onEvent(const IRCClient::Events::CTCP_Req&) override;
 };

@@ -52,11 +52,11 @@ target_link_libraries(solanaceae_ircclient_messages PUBLIC
 
 ########################################
 
-add_executable(test2 EXCLUDE_FROM_ALL
+add_executable(irc_test2 EXCLUDE_FROM_ALL
 	test2.cpp
 )
 
-target_link_libraries(test2 PUBLIC
+target_link_libraries(irc_test2 PUBLIC
 	solanaceae_ircclient
 	solanaceae_ircclient_contacts
 	solanaceae_ircclient_messages

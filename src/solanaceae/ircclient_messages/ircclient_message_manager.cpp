@@ -16,12 +16,6 @@
 #include <vector>
 #include <iostream>
 
-//namespace Components {
-	//struct ServerName {
-		//std::string name;
-	//};
-//} // Components
-
 IRCClientMessageManager::IRCClientMessageManager(
 	RegistryMessageModel& rmm,
 	Contact3Registry& cr,
@@ -207,19 +201,21 @@ bool IRCClientMessageManager::onEvent(const IRCClient::Events::PrivMSG& e) {
 	// e.origin is sender
 	auto from =  _ircccm.getU(e.origin); // assuming its always a user // aka ContactFrom
 	if (!from.valid()) {
-		std::cerr << "IRCCMM error: channel event unknown sender\n";
+		std::cerr << "IRCCMM error: privmsg event unknown sender\n";
 		return false;
 	}
 
 	// e.params.at(0) is receiver (us?)
 	auto to =  _ircccm.getU(e.params.at(0)); // aka ContactTo
 	if (!to.valid()) {
-		std::cerr << "IRCCMM error: channel event unknown channel\n";
+		std::cerr << "IRCCMM error: privmsg event unknown channel\n";
 		return false;
 	}
 
+	// TODO: move this to contact
 	// upgrade contact to big
 	from.emplace_or_replace<Contact::Components::TagBig>(); // could be like an invite?
+	from.emplace_or_replace<Contact::Components::TagPrivate>();
 
 	return processMessage(from, to, e.params.at(1), false);
 }

@@ -12,7 +12,7 @@ extern "C" void* irc_get_ctx(irc_session_t* session);
 
 namespace IRCClient::Events {
 
-	// TODO: proper param seperation
+	// TODO: proper param separation
 
 	struct Numeric {
 		unsigned int event;
