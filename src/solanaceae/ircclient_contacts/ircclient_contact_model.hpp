@@ -61,4 +61,5 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 		bool onEvent(const IRCClient::Events::Topic& e) override;
 		bool onEvent(const IRCClient::Events::Quit& e) override;
 		bool onEvent(const IRCClient::Events::CTCP_Req&) override;
+		bool onEvent(const IRCClient::Events::Disconnect&) override;
 };

@@ -31,6 +31,8 @@ IRCClientContactModel::IRCClientContactModel(
 
 	_ircc.subscribe(this, IRCClient_Event::CTCP_REQ);
 
+	_ircc.subscribe(this, IRCClient_Event::DISCONNECT);
+
 	// dont create server self etc until connect event comes
 
 	for (const auto& [channel, should_join] : _conf.entries_bool("IRCClient", "autojoin")) {
@@ -211,6 +213,8 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Connect& e) {
 	// since this might be a reconnect
 	// and reissue joins
 	_cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::ChannelName>().each([this](const auto c, const auto& sn_c, const auto& cn_c) {
+		// HACK: by name
+		// should be by parent instead
 		if (sn_c.name != _ircc.getServerName()) {
 			return;
 		}
@@ -418,14 +422,13 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 
 		std::cout << "IRCCCM: joined '" << joined_channel_name << "' id:" << bin2hex(channel.get<Contact::Components::ID>().data) << "\n";
 
-		channel.emplace_or_replace<Contact::Components::ConnectionState>(Contact::Components::ConnectionState::State::cloud);
-
 		channel.emplace_or_replace<Contact::Components::TagBig>();
 		channel.emplace_or_replace<Contact::Components::TagGroup>();
 
 		// add self to channel
 		channel.emplace_or_replace<Contact::Components::Self>(_self);
 	}
+	channel.emplace_or_replace<Contact::Components::ConnectionState>(Contact::Components::ConnectionState::State::cloud);
 
 	auto user = getU(e.origin);
 	if (!user.valid()) {
@@ -563,3 +566,26 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::CTCP_Req& e) {
 
 	return false;
 }
+
+bool IRCClientContactModel::onEvent(const IRCClient::Events::Disconnect&) {
+	_connected = false;
+	if (!_cr.valid(_server)) {
+		// skip if where already offline
+		return false;
+	}
+	_cr.get<Contact::Components::ConnectionState>(_server).state = Contact::Components::ConnectionState::disconnected;
+
+	// HACK: by name
+	_cr.view<Contact::Components::IRC::ServerName, Contact::Components::ConnectionState>().each([this](const auto c, const auto& sn_c, auto& cs) {
+		// HACK: by name
+		// should be by parent instead
+		if (sn_c.name != _ircc.getServerName()) {
+			return;
+		}
+
+		cs.state = Contact::Components::ConnectionState::disconnected;
+	});
+
+	return false;
+}
+
