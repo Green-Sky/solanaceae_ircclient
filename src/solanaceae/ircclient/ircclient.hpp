@@ -170,7 +170,11 @@ using IRCClientEventProviderI = EventProviderI<IRCClientEventI>;
 class IRCClient1 : public IRCClientEventProviderI {
 	ConfigModelI& _conf;
 
-	irc_session_t* _irc_session = nullptr;
+	irc_session_t* _irc_session {nullptr};
+	bool _try_connecting_state {false};
+	float _try_connecting_cooldown {0.f};
+
+	bool _event_fired {false};
 
 	std::string _server_name; // name of the irc network this iirc is connected to
 
@@ -181,9 +185,10 @@ class IRCClient1 : public IRCClientEventProviderI {
 
 		~IRCClient1(void);
 
+
 		// tmp
 		void run(void);
-		void iterate(void);
+		float iterate(float delta);
 
 		// raw access
 		irc_session_t* getSession(void);
@@ -192,6 +197,10 @@ class IRCClient1 : public IRCClientEventProviderI {
 
 		// join
 		void join(std::string_view channel);
+
+	private:
+		// connects an already existing session
+		void connectSession(void);
 
 	private: // callbacks for libircclient
 		static void on_event_numeric(irc_session_t* session, unsigned int event, const char* origin, const char** params, unsigned int count);
@@ -220,6 +229,7 @@ class IRCClient1 : public IRCClientEventProviderI {
 			assert(ircc != nullptr);
 
 			ircc->dispatch(event_type_enum, EventType{origin, params_view});
+			ircc->_event_fired = true;
 		}
 };
 

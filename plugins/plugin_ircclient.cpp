@@ -63,8 +63,7 @@ SOLANA_PLUGIN_EXPORT void solana_plugin_stop(void) {
 }
 
 SOLANA_PLUGIN_EXPORT float solana_plugin_tick(float delta) {
-	(void)delta;
-	g_ircc->iterate(); // TODO: return interval, respect dcc etc
+	g_ircc->iterate(delta); // TODO: return interval, respect dcc etc
 
 	return 1.f; // expect atleast once per sec
 }

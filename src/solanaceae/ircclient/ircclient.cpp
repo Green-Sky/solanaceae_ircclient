@@ -26,6 +26,7 @@ void IRCClient1::on_event_numeric(irc_session_t* session, unsigned int event, co
 
 	auto ircc = static_cast<IRCClient1*>(irc_get_ctx(session));
 	ircc->dispatch(IRCClient_Event::NUMERIC, IRCClient::Events::Numeric{event, origin, params_view});
+	ircc->_event_fired = true;
 }
 
 IRCClient1::IRCClient1(
@@ -77,7 +78,105 @@ IRCClient1::IRCClient1(
 	irc_option_set(_irc_session, LIBIRC_OPTION_STRIPNICKS);
 	irc_option_set(_irc_session, LIBIRC_OPTION_SSL_NO_VERIFY); // why
 
+	connectSession();
+}
 
+IRCClient1::~IRCClient1(void) {
+	irc_destroy_session(_irc_session);
+}
+
+// tmp
+void IRCClient1::run(void) {
+	if (irc_run(_irc_session) != 0) {
+		std::cerr << "error failed to run: " << irc_strerror(irc_errno(_irc_session)) << "\n";
+	}
+}
+
+float IRCClient1::iterate(float delta) {
+	//if ( session->state != LIBIRC_STATE_CONNECTING )
+	//{
+		//session->lasterror = LIBIRC_ERR_STATE;
+		//return 1;
+	//}
+
+	if (!irc_is_connected(_irc_session)) {
+		if (_try_connecting_state) {
+			// try to connect, every 20sec
+			_try_connecting_cooldown -= delta;
+			if (_try_connecting_cooldown <= 0.f) {
+				std::cerr << "IRCC: trying to connect\n";
+				connectSession();
+			}
+		} else {
+			std::cerr << "IRCC error: not connected, trying to reconnect\n";
+			connectSession(); // potentially enters trying phase
+		}
+		return 0.5f;
+	}
+
+	_event_fired = false;
+
+	struct timeval tv;
+	fd_set in_set, out_set;
+	int maxfd = 0;
+
+	//tv.tv_usec = 20000; // 20ms
+	tv.tv_usec = 1000; // 1ms
+	tv.tv_sec = 0;
+
+	// Init sets
+	FD_ZERO(&in_set);
+	FD_ZERO(&out_set);
+
+	if (irc_add_select_descriptors(_irc_session, &in_set, &out_set, &maxfd) != 0) {
+		std::cerr << "IRCC error: adding select descriptors\n";
+	}
+
+	if (select(maxfd + 1, &in_set, &out_set, 0, &tv) < 0) {
+		std::cerr << "IRCC error: select returned error\n";
+#if 0
+		if (socket_error() == EINTR) {
+			//continue;
+			return;
+		}
+#endif
+
+		//session->lasterror = LIBIRC_ERR_TERMINATED;
+		//return 1;
+		return 0.1f;
+	}
+
+	if (irc_process_select_descriptors(_irc_session, &in_set, &out_set) != 0) {
+		std::cerr << "IRCC error: processing socket select\n";
+		//return 1;
+	}
+
+	// TODO: handle dcc
+	if (_event_fired) {
+		return 0.1f;
+	} else {
+		return 1.f;
+	}
+}
+
+irc_session_t* IRCClient1::getSession(void) {
+	return _irc_session;
+}
+
+const std::string_view IRCClient1::getServerName(void) const {
+	return _server_name;
+}
+
+void IRCClient1::connectSession(void) {
+	_try_connecting_state = true;
+	_try_connecting_cooldown = 20.f;
+
+	// reset connection
+	// only closes potentially open sockets and sets state to init
+	// nothing else is touched
+	irc_disconnect(_irc_session);
+
+	// TODO: do we need to set this every time?
 	if (!_conf.has_string("IRCClient", "server")) {
 		std::cerr << "IRCC error: no irc server in config!!\n";
 		throw std::runtime_error("missing server in config");
@@ -111,70 +210,14 @@ IRCClient1::IRCClient1(
 	}
 
 	if (irc_connect(_irc_session, server.c_str(), port, nullptr, nick.c_str(), username.c_str(), realname.c_str()) != 0) {
-		std::cerr << "error failed to connect: (" << irc_errno(_irc_session) << ") " << irc_strerror(irc_errno(_irc_session)) << "\n";
-		throw std::runtime_error("failed to connect to irc");
-	}
-}
+		std::cerr << "IRCC error: failed to connect: (" << irc_errno(_irc_session) << ") " << irc_strerror(irc_errno(_irc_session)) << "\n";
 
-IRCClient1::~IRCClient1(void) {
-	irc_destroy_session(_irc_session);
-}
+		irc_disconnect(_irc_session);
 
-// tmp
-void IRCClient1::run(void) {
-	if (irc_run(_irc_session) != 0) {
-		std::cerr << "error failed to run: " << irc_strerror(irc_errno(_irc_session)) << "\n";
-	}
-}
-
-void IRCClient1::iterate(void) {
-	//if ( session->state != LIBIRC_STATE_CONNECTING )
-	//{
-		//session->lasterror = LIBIRC_ERR_STATE;
-		//return 1;
-	//}
-
-	if (!irc_is_connected(_irc_session)) {
+		//throw std::runtime_error("failed to connect to irc");
 		return;
 	}
 
-	struct timeval tv;
-	fd_set in_set, out_set;
-	int maxfd = 0;
-
-	//tv.tv_usec = 20000; // 20ms
-	tv.tv_usec = 1000; // 1ms
-	tv.tv_sec = 0;
-
-	// Init sets
-	FD_ZERO (&in_set);
-	FD_ZERO (&out_set);
-
-	irc_add_select_descriptors(_irc_session, &in_set, &out_set, &maxfd);
-
-	if (select(maxfd + 1, &in_set, &out_set, 0, &tv) < 0)
-	{
-#if 0
-		if (socket_error() == EINTR) {
-			//continue;
-			return;
-		}
-#endif
-
-		//session->lasterror = LIBIRC_ERR_TERMINATED;
-		//return 1;
-		return;
-	}
-
-	if (irc_process_select_descriptors(_irc_session, &in_set, &out_set)) {
-		//return 1;
-	}
+	_try_connecting_state = false;
 }
 
-irc_session_t* IRCClient1::getSession(void) {
-	return _irc_session;
-}
-
-const std::string_view IRCClient1::getServerName(void) const {
-	return _server_name;
-}
