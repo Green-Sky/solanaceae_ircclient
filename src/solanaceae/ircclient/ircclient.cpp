@@ -109,6 +109,8 @@ float IRCClient1::iterate(float delta) {
 			}
 		} else {
 			std::cerr << "IRCC error: not connected, trying to reconnect\n";
+
+			dispatch(IRCClient_Event::DISCONNECT, IRCClient::Events::Disconnect{});
 			connectSession(); // potentially enters trying phase
 		}
 		return 0.5f;
@@ -165,6 +167,10 @@ irc_session_t* IRCClient1::getSession(void) {
 
 const std::string_view IRCClient1::getServerName(void) const {
 	return _server_name;
+}
+
+void IRCClient1::join(std::string_view channel) {
+	assert(false && "implement me");
 }
 
 void IRCClient1::connectSession(void) {

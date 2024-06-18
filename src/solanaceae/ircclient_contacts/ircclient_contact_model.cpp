@@ -207,8 +207,26 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Connect& e) {
 		_cr.emplace_or_replace<Contact::Components::Self>(_server, _self);
 	}
 
+	// check for preexisting channels,
+	// since this might be a reconnect
+	// and reissue joins
+	_cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::ChannelName>().each([this](const auto c, const auto& sn_c, const auto& cn_c) {
+		if (sn_c.name != _ircc.getServerName()) {
+			return;
+		}
+
+		// TODO: implement join lol
+		irc_cmd_join(
+			_ircc.getSession(),
+			cn_c.name.c_str(),
+			""
+		);
+	});
+
 	// join queued
+	// TODO: merge with above
 	while (!_join_queue.empty()) {
+		// TODO: implement join lol
 		irc_cmd_join(
 			_ircc.getSession(),
 			_join_queue.front().c_str(),

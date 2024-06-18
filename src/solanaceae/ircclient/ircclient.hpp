@@ -110,6 +110,11 @@ namespace IRCClient::Events {
 		std::vector<std::string_view> params;
 	};
 
+	struct Disconnect {
+		// TODO: reason
+		// this is not a libircclient event (bad lib)
+	};
+
 } // Events
 
 enum class IRCClient_Event : uint32_t {
@@ -134,6 +139,8 @@ enum class IRCClient_Event : uint32_t {
 	CTCP_ACTION,
 
 	UNKNOWN,
+
+	DISCONNECT,
 
 	MAX
 };
@@ -162,6 +169,7 @@ struct IRCClientEventI {
 	virtual bool onEvent(const IRCClient::Events::CTCP_Rep&) { return false; }
 	virtual bool onEvent(const IRCClient::Events::CTCP_Action&) { return false; }
 	virtual bool onEvent(const IRCClient::Events::Unknown&) { return false; }
+	virtual bool onEvent(const IRCClient::Events::Disconnect&) { return false; }
 };
 
 using IRCClientEventProviderI = EventProviderI<IRCClientEventI>;
@@ -207,12 +215,14 @@ class IRCClient1 : public IRCClientEventProviderI {
 
 		template<IRCClient_Event event_type_enum, typename EventType>
 		static void on_event_generic_new(irc_session_t* session, const char* event, const char* origin, const char** params, unsigned int count) {
+			assert(session != nullptr);
+
 			std::vector<std::string_view> params_view;
 			for (size_t i = 0; i < count; i++) {
 				params_view.push_back(params[i]);
 			}
 
-			std::cout << "IRC: event " << event << " " << origin << "\n";
+			std::cout << "IRC: event '" << (event?event:"<nullptr>") << "' o:" << (origin?origin:"<nullptr>") << "\n";
 
 #if 0
 			if (std::string_view{event} == "ACTION") {
@@ -228,7 +238,8 @@ class IRCClient1 : public IRCClientEventProviderI {
 			auto* ircc = static_cast<IRCClient1*>(irc_get_ctx(session));
 			assert(ircc != nullptr);
 
-			ircc->dispatch(event_type_enum, EventType{origin, params_view});
+			// hack if origin is null
+			ircc->dispatch(event_type_enum, EventType{origin?origin:"<nullptr>", params_view});
 			ircc->_event_fired = true;
 		}
 };
