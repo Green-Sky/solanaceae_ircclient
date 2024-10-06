@@ -6,7 +6,7 @@
 
 class IRCClientMessageManager : public IRCClientEventI, public RegistryMessageModelEventI {
 	protected:
-		RegistryMessageModel& _rmm;
+		RegistryMessageModelI& _rmm;
 		Contact3Registry& _cr;
 		ConfigModelI& _conf;
 		IRCClient1& _ircc;
@@ -14,7 +14,7 @@ class IRCClientMessageManager : public IRCClientEventI, public RegistryMessageMo
 
 	public:
 		IRCClientMessageManager(
-			RegistryMessageModel& rmm,
+			RegistryMessageModelI& rmm,
 			Contact3Registry& cr,
 			ConfigModelI& conf,
 			IRCClient1& ircc,

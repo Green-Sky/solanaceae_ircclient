@@ -17,7 +17,7 @@
 #include <iostream>
 
 IRCClientMessageManager::IRCClientMessageManager(
-	RegistryMessageModel& rmm,
+	RegistryMessageModelI& rmm,
 	Contact3Registry& cr,
 	ConfigModelI& conf,
 	IRCClient1& ircc,
