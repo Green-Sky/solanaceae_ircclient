@@ -415,6 +415,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 		}
 		channel.emplace_or_replace<Contact::Components::ContactModel>(this);
 		channel.emplace_or_replace<Contact::Components::Parent>(_server);
+		_cr.get_or_emplace<Contact::Components::ParentOf>(_server).subs.push_back(channel);
 		channel.emplace_or_replace<Contact::Components::ParentOf>(); // start empty
 		channel.emplace_or_replace<Contact::Components::IRC::ServerName>(std::string{_ircc.getServerName()});
 		channel.emplace_or_replace<Contact::Components::IRC::ChannelName>(std::string{joined_channel_name});
