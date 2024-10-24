@@ -7,9 +7,11 @@
 class IRCClientMessageManager : public IRCClientEventI, public RegistryMessageModelEventI {
 	protected:
 		RegistryMessageModelI& _rmm;
+		RegistryMessageModelI::SubscriptionReference _rmm_sr;
 		Contact3Registry& _cr;
 		ConfigModelI& _conf;
 		IRCClient1& _ircc;
+		IRCClient1::SubscriptionReference _ircc_sr;
 		IRCClientContactModel& _ircccm;
 
 	public:

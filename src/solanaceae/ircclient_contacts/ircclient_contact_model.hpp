@@ -16,6 +16,7 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 	Contact3Registry& _cr;
 	ConfigModelI& _conf;
 	IRCClient1& _ircc;
+	IRCClient1::SubscriptionReference _ircc_sr;
 
 	// cm needs the connect event to happen
 	bool _connected {false};

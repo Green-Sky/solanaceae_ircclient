@@ -22,14 +22,16 @@ IRCClientMessageManager::IRCClientMessageManager(
 	ConfigModelI& conf,
 	IRCClient1& ircc,
 	IRCClientContactModel& ircccm
-) : _rmm(rmm), _cr(cr), _conf(conf), _ircc(ircc), _ircccm(ircccm) {
-	_ircc.subscribe(this, IRCClient_Event::CHANNEL);
-	_ircc.subscribe(this, IRCClient_Event::PRIVMSG);
-	_ircc.subscribe(this, IRCClient_Event::NOTICE);
-	_ircc.subscribe(this, IRCClient_Event::CHANNELNOTICE);
-	_ircc.subscribe(this, IRCClient_Event::CTCP_ACTION);
+) : _rmm(rmm), _rmm_sr(_rmm.newSubRef(this)), _cr(cr), _conf(conf), _ircc(ircc), _ircc_sr(_ircc.newSubRef(this)), _ircccm(ircccm) {
+	_ircc_sr
+		.subscribe(IRCClient_Event::CHANNEL)
+		.subscribe(IRCClient_Event::PRIVMSG)
+		.subscribe(IRCClient_Event::NOTICE)
+		.subscribe(IRCClient_Event::CHANNELNOTICE)
+		.subscribe(IRCClient_Event::CTCP_ACTION)
+	;
 
-	_rmm.subscribe(this, RegistryMessageModel_Event::send_text);
+	_rmm_sr.subscribe(RegistryMessageModel_Event::send_text);
 }
 
 IRCClientMessageManager::~IRCClientMessageManager(void) {

@@ -19,19 +19,21 @@ IRCClientContactModel::IRCClientContactModel(
 	Contact3Registry& cr,
 	ConfigModelI& conf,
 	IRCClient1& ircc
-) : _cr(cr), _conf(conf), _ircc(ircc) {
-	_ircc.subscribe(this, IRCClient_Event::CONNECT);
+) : _cr(cr), _conf(conf), _ircc(ircc), _ircc_sr(_ircc.newSubRef(this)) {
+	_ircc_sr
+		.subscribe(IRCClient_Event::CONNECT)
 
-	_ircc.subscribe(this, IRCClient_Event::NUMERIC);
+		.subscribe(IRCClient_Event::NUMERIC)
 
-	_ircc.subscribe(this, IRCClient_Event::JOIN);
-	_ircc.subscribe(this, IRCClient_Event::PART);
-	_ircc.subscribe(this, IRCClient_Event::TOPIC);
-	_ircc.subscribe(this, IRCClient_Event::QUIT);
+		.subscribe(IRCClient_Event::JOIN)
+		.subscribe(IRCClient_Event::PART)
+		.subscribe(IRCClient_Event::TOPIC)
+		.subscribe(IRCClient_Event::QUIT)
 
-	_ircc.subscribe(this, IRCClient_Event::CTCP_REQ);
+		.subscribe(IRCClient_Event::CTCP_REQ)
 
-	_ircc.subscribe(this, IRCClient_Event::DISCONNECT);
+		.subscribe(IRCClient_Event::DISCONNECT)
+	;
 
 	// dont create server self etc until connect event comes
 
