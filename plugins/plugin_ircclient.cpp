@@ -59,6 +59,8 @@ SOLANA_PLUGIN_EXPORT uint32_t solana_plugin_start(struct SolanaAPI* solana_api) 
 SOLANA_PLUGIN_EXPORT void solana_plugin_stop(void) {
 	std::cout << "PLUGIN " << plugin_name << " STOP()\n";
 
+	g_irccmm.reset();
+	g_ircccm.reset();
 	g_ircc.reset();
 }
 
