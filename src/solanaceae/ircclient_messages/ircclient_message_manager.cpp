@@ -1,5 +1,7 @@
 #include "./ircclient_message_manager.hpp"
 
+#include <solanaceae/util/time.hpp>
+
 #include <solanaceae/ircclient_contacts/components.hpp>
 
 #include <solanaceae/contact/components.hpp>
@@ -38,7 +40,7 @@ IRCClientMessageManager::~IRCClientMessageManager(void) {
 }
 
 bool IRCClientMessageManager::processMessage(Contact3Handle from, Contact3Handle to, std::string_view message_text, bool action) {
-	const uint64_t ts = Message::getTimeMS();
+	const uint64_t ts = getTimeMS();
 
 	Message3Registry* reg_ptr = nullptr;
 	if (to.all_of<Contact::Components::TagSelfStrong>()) {
@@ -88,7 +90,7 @@ bool IRCClientMessageManager::sendText(const Contact3 c, std::string_view messag
 		return false; // TODO: empty messages allowed?
 	}
 
-	const uint64_t ts = Message::getTimeMS();
+	const uint64_t ts = getTimeMS();
 
 	if (_cr.all_of<Contact::Components::TagSelfStrong>(c)) {
 		return false; // message to self? not with irc
