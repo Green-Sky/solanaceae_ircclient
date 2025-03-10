@@ -1,5 +1,7 @@
 #include <solanaceae/plugin/solana_plugin_v1.h>
 
+#include <solanaceae/contact/contact_store_i.hpp>
+
 #include <solanaceae/ircclient/ircclient.hpp>
 #include <solanaceae/ircclient_contacts/ircclient_contact_model.hpp>
 #include <solanaceae/ircclient_messages/ircclient_message_manager.hpp>
