@@ -8,7 +8,7 @@ add_library(solanaceae_ircclient
 )
 
 target_include_directories(solanaceae_ircclient PUBLIC .)
-target_compile_definitions(solanaceae_ircclient PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(solanaceae_ircclient PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_features(solanaceae_ircclient PRIVATE cxx_std_20)
 target_compile_features(solanaceae_ircclient INTERFACE cxx_std_17)
 target_link_libraries(solanaceae_ircclient PUBLIC
@@ -28,7 +28,7 @@ add_library(solanaceae_ircclient_contacts
 )
 
 target_include_directories(solanaceae_ircclient_contacts PUBLIC .)
-target_compile_definitions(solanaceae_ircclient_contacts PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(solanaceae_ircclient_contacts PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_features(solanaceae_ircclient_contacts PRIVATE cxx_std_20)
 target_compile_features(solanaceae_ircclient_contacts INTERFACE cxx_std_17)
 target_link_libraries(solanaceae_ircclient_contacts PUBLIC
@@ -45,7 +45,7 @@ add_library(solanaceae_ircclient_messages
 )
 
 target_include_directories(solanaceae_ircclient_messages PUBLIC .)
-target_compile_definitions(solanaceae_ircclient_messages PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(solanaceae_ircclient_messages PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_features(solanaceae_ircclient_messages PRIVATE cxx_std_20)
 target_compile_features(solanaceae_ircclient_messages INTERFACE cxx_std_17)
 target_link_libraries(solanaceae_ircclient_messages PUBLIC
