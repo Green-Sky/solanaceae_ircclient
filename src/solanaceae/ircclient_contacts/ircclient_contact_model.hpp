@@ -1,9 +1,11 @@
 #pragma once
 
-#include <solanaceae/contact/contact_model3.hpp>
+#include <solanaceae/contact/contact_model4.hpp>
 #include <solanaceae/util/config_model.hpp>
 
 #include <solanaceae/ircclient/ircclient.hpp>
+
+#include <entt/entity/entity.hpp>
 
 #include <vector>
 #include <string>
@@ -12,8 +14,8 @@
 
 #include <iostream> // tmp
 
-class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
-	Contact3Registry& _cr;
+class IRCClientContactModel : public IRCClientEventI, public ContactModel4I {
+	ContactStore4I& _cs;
 	ConfigModelI& _conf;
 	IRCClient1& _ircc;
 	IRCClient1::SubscriptionReference _ircc_sr;
@@ -22,15 +24,15 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 	bool _connected {false};
 
 	std::vector<uint8_t> _server_hash; // cached for id gen
-	Contact3 _server = entt::null;
-	Contact3 _self = entt::null;
+	Contact4 _server {entt::null};
+	Contact4 _self {entt::null};
 
 	// used if not connected
 	std::queue<std::string> _join_queue;
 
 	public:
 		IRCClientContactModel(
-			Contact3Registry& cr,
+			ContactStore4I& cs,
 			ConfigModelI& conf,
 			IRCClient1& ircc
 		);
@@ -38,6 +40,11 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 		virtual ~IRCClientContactModel(void);
 
 		void join(const std::string& channel);
+
+	protected: // interface
+		bool addContact(Contact4 c) override;
+		bool acceptRequest(Contact4 c, std::string_view self_name, std::string_view password) override;
+		bool leave(Contact4 c, std::string_view reason) override;
 
 	private:
 		// just the hash algo
@@ -49,10 +56,10 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel3I {
 		// eg: hash(hash(ServerName)+ChannelName)
 		std::vector<uint8_t> getIDHash(std::string_view name);
 
-		Contact3Handle getC(std::string_view channel);
-		Contact3Handle getU(std::string_view nick);
+		ContactHandle4 getC(std::string_view channel);
+		ContactHandle4 getU(std::string_view nick);
 		// user or channel using channel prefix
-		Contact3Handle getCU(std::string_view name);
+		ContactHandle4 getCU(std::string_view name);
 
 	private: // ircclient
 		bool onEvent(const IRCClient::Events::Connect& e) override;

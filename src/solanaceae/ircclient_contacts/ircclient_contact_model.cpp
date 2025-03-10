@@ -2,11 +2,15 @@
 
 #include "./components.hpp"
 
+#include <solanaceae/contact/contact_store_i.hpp>
 #include <solanaceae/contact/components.hpp>
 #include <solanaceae/util/utils.hpp>
 
 #include <libirc_rfcnumeric.h>
 #include <libircclient.h>
+
+#include <entt/entity/registry.hpp>
+#include <entt/entity/handle.hpp>
 
 #include <sodium/crypto_hash_sha256.h>
 
@@ -16,10 +20,10 @@
 #include <iostream>
 
 IRCClientContactModel::IRCClientContactModel(
-	Contact3Registry& cr,
+	ContactStore4I& cs,
 	ConfigModelI& conf,
 	IRCClient1& ircc
-) : _cr(cr), _conf(conf), _ircc(ircc), _ircc_sr(_ircc.newSubRef(this)) {
+) : _cs(cs), _conf(conf), _ircc(ircc), _ircc_sr(_ircc.newSubRef(this)) {
 	_ircc_sr
 		.subscribe(IRCClient_Event::CONNECT)
 
@@ -62,6 +66,18 @@ void IRCClientContactModel::join(const std::string& channel) {
 	}
 }
 
+bool IRCClientContactModel::addContact(Contact4 c) {
+	return false;
+}
+
+bool IRCClientContactModel::acceptRequest(Contact4 c, std::string_view self_name, std::string_view password) {
+	return false;
+}
+
+bool IRCClientContactModel::leave(Contact4 c, std::string_view reason) {
+	return false;
+}
+
 std::vector<uint8_t> IRCClientContactModel::getHash(std::string_view value) {
 	assert(!value.empty());
 
@@ -87,33 +103,35 @@ std::vector<uint8_t> IRCClientContactModel::getIDHash(std::string_view name) {
 	return getHash(data);
 }
 
-Contact3Handle IRCClientContactModel::getC(std::string_view channel) {
+ContactHandle4 IRCClientContactModel::getC(std::string_view channel) {
 	const auto server_name = _ircc.getServerName();
+	const auto& cr = _cs.registry();
 	// TODO: this needs a better way
-	for (const auto e : _cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::ChannelName>()) {
-		if (_cr.get<Contact::Components::IRC::ServerName>(e).name == server_name && _cr.get<Contact::Components::IRC::ChannelName>(e).name == channel) {
-			return {_cr, e};
+	for (const auto e : cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::ChannelName>()) {
+		if (cr.get<Contact::Components::IRC::ServerName>(e).name == server_name && cr.get<Contact::Components::IRC::ChannelName>(e).name == channel) {
+			return _cs.contactHandle(e);
 		}
 	}
 
-	return {_cr, entt::null};
+	return {};
 }
 
-Contact3Handle IRCClientContactModel::getU(std::string_view nick) {
+ContactHandle4 IRCClientContactModel::getU(std::string_view nick) {
 	const auto server_name = _ircc.getServerName();
+	const auto& cr = _cs.registry();
 	// TODO: this needs a better way
-	for (const auto e : _cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::UserName>()) {
-		if (_cr.get<Contact::Components::IRC::ServerName>(e).name == server_name && _cr.get<Contact::Components::IRC::UserName>(e).name == nick) {
-			return {_cr, e};
+	for (const auto e : cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::UserName>()) {
+		if (cr.get<Contact::Components::IRC::ServerName>(e).name == server_name && cr.get<Contact::Components::IRC::UserName>(e).name == nick) {
+			return _cs.contactHandle(e);
 		}
 	}
 
-	return {_cr, entt::null};
+	return {};
 }
 
-Contact3Handle IRCClientContactModel::getCU(std::string_view name) {
+ContactHandle4 IRCClientContactModel::getCU(std::string_view name) {
 	if (name.empty()) {
-		return {_cr, entt::null};
+		return {};
 	}
 
 	static constexpr std::string_view channel_prefixes{
@@ -137,63 +155,59 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Connect& e) {
 	_server_hash = getHash(_ircc.getServerName());
 	_connected = true;
 
-	{ // server
-		if (!_cr.valid(_server)) {
-			// check for empty contact by id
-			for (const auto e : _cr.view<Contact::Components::ID>()) {
-				if (_cr.get<Contact::Components::ID>(e).data == _server_hash) {
-					_server = e;
-					break;
-				}
-			}
+	auto& cr = _cs.registry();
 
-			if (!_cr.valid(_server)) {
-				_server = _cr.create();
-				_cr.emplace_or_replace<Contact::Components::ID>(_server, _server_hash);
+	bool server_contact_created {false};
+	{ // server
+		if (!cr.valid(_server)) {
+			// check for empty contact by id
+			_server = _cs.getOneContactByID(ByteSpan{_server_hash});
+
+			if (!cr.valid(_server)) {
+				_server = cr.create();
+				server_contact_created = true;
+				cr.emplace_or_replace<Contact::Components::ID>(_server, _server_hash);
 			}
 		}
 
-		_cr.emplace_or_replace<Contact::Components::ContactModel>(_server, this);
-		_cr.emplace_or_replace<Contact::Components::IRC::ServerName>(_server, std::string{_ircc.getServerName()}); // really?
-		_cr.emplace_or_replace<Contact::Components::Name>(_server, std::string{_ircc.getServerName()}); // TODO: add special string?
+		cr.emplace_or_replace<Contact::Components::ContactModel>(_server, this);
+		cr.emplace_or_replace<Contact::Components::IRC::ServerName>(_server, std::string{_ircc.getServerName()}); // really?
+		cr.emplace_or_replace<Contact::Components::Name>(_server, std::string{_ircc.getServerName()}); // TODO: add special string?
 
 		// does this make sense ?
-		_cr.emplace_or_replace<Contact::Components::ConnectionState>(_server, Contact::Components::ConnectionState::State::direct);
+		cr.emplace_or_replace<Contact::Components::ConnectionState>(_server, Contact::Components::ConnectionState::State::direct);
 
-		_cr.emplace_or_replace<Contact::Components::TagBig>(_server);
+		cr.emplace_or_replace<Contact::Components::TagBig>(_server);
 		// the server connection is also the root contact (ircccm only handles 1 server 1 user)
-		_cr.emplace_or_replace<Contact::Components::TagRoot>(_server);
+		cr.emplace_or_replace<Contact::Components::TagRoot>(_server);
 		// TODO: should this be its own node instead? or should the server node be created on construction?
 	}
 
+	bool self_contact_created {false};
 	{ // self
-		if (!_cr.valid(_self)) {
+		if (!cr.valid(_self)) {
 			// TODO: this can create self with peexisting id
 			if (!e.params.empty()) {
 				const auto self_hash = getIDHash(e.params.front());
 
 				// check for empty contact by id
-				for (const auto e : _cr.view<Contact::Components::ID>()) {
-					if (_cr.get<Contact::Components::ID>(e).data == self_hash) {
-						_self = e;
-						break;
-					}
-				}
+				_server = _cs.getOneContactByID(_server, ByteSpan{self_hash});
 			}
-			if (!_cr.valid(_self)) {
-				_self = _cr.create();
+			if (!cr.valid(_self)) {
+				_self = cr.create();
+				self_contact_created = true;
 			}
 		}
-		_cr.emplace_or_replace<Contact::Components::ContactModel>(_self, this);
-		_cr.emplace_or_replace<Contact::Components::Parent>(_self, _server);
-		_cr.emplace_or_replace<Contact::Components::TagSelfStrong>(_self);
-		_cr.emplace_or_replace<Contact::Components::IRC::ServerName>(_self, std::string{_ircc.getServerName()}); // really?
+		cr.emplace_or_replace<Contact::Components::ContactModel>(_self, this);
+		cr.emplace_or_replace<Contact::Components::Parent>(_self, _server);
+		cr.emplace_or_replace<Contact::Components::TagSelfStrong>(_self);
+		cr.emplace_or_replace<Contact::Components::IRC::ServerName>(_self, std::string{_ircc.getServerName()}); // really?
 		if (!e.params.empty()) {
-			_cr.emplace_or_replace<Contact::Components::IRC::UserName>(_self, std::string{e.params.front()});
-			_cr.emplace_or_replace<Contact::Components::Name>(_self, std::string{e.params.front()});
+			cr.emplace_or_replace<Contact::Components::IRC::UserName>(_self, std::string{e.params.front()});
+			cr.emplace_or_replace<Contact::Components::Name>(_self, std::string{e.params.front()});
 			// make id hash(hash(ServerName)+UserName)
 			// or irc name format, but those might cause collisions
-			_cr.emplace_or_replace<Contact::Components::ID>(_self, getIDHash(e.params.front()));
+			cr.emplace_or_replace<Contact::Components::ID>(_self, getIDHash(e.params.front()));
 
 #if 0
 			std::cout << "### created self with"
@@ -205,16 +219,16 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Connect& e) {
 #endif
 		}
 
-		_cr.emplace_or_replace<Contact::Components::ConnectionState>(_self, Contact::Components::ConnectionState::State::direct);
+		cr.emplace_or_replace<Contact::Components::ConnectionState>(_self, Contact::Components::ConnectionState::State::direct);
 
 		// add self to server
-		_cr.emplace_or_replace<Contact::Components::Self>(_server, _self);
+		cr.emplace_or_replace<Contact::Components::Self>(_server, _self);
 	}
 
 	// check for preexisting channels,
 	// since this might be a reconnect
 	// and reissue joins
-	_cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::ChannelName>().each([this](const auto c, const auto& sn_c, const auto& cn_c) {
+	cr.view<Contact::Components::IRC::ServerName, Contact::Components::IRC::ChannelName>().each([this](const auto c, const auto& sn_c, const auto& cn_c) {
 		// HACK: by name
 		// should be by parent instead
 		if (sn_c.name != _ircc.getServerName()) {
@@ -239,6 +253,18 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Connect& e) {
 			""
 		);
 		_join_queue.pop();
+	}
+
+	if (server_contact_created) {
+		_cs.throwEventConstruct(_server);
+	} else {
+		_cs.throwEventUpdate(_server);
+	}
+
+	if (self_contact_created) {
+		_cs.throwEventConstruct(_self);
+	} else {
+		_cs.throwEventUpdate(_self);
 	}
 
 	return false;
@@ -268,7 +294,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Numeric& e) {
 
 		const auto& channel_name = e.params.at(2);
 		auto channel = getC(channel_name);
-		if (!channel.valid()) {
+		if (!static_cast<bool>(channel)) {
 			std::cerr << "IRCCCM error: name list for unknown channel\n";
 			return false;
 		}
@@ -319,17 +345,15 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Numeric& e) {
 				//std::cout << "u: " << user_str << "\n";
 
 				auto user = getU(user_str);
-				if (!user.valid()) {
+				bool user_throw_event {false};
+				bool user_created {false};
+				if (!static_cast<bool>(user)) {
 					const auto user_hash = getIDHash(user_str);
 					// check for empty contact by id
-					for (const auto e : _cr.view<Contact::Components::ID>()) {
-						if (_cr.get<Contact::Components::ID>(e).data == user_hash) {
-							user = {_cr, e};
-							break;
-						}
-					}
-					if (!user.valid()) {
-						user = {_cr, _cr.create()};
+					user = _cs.getOneContactByID(_server, ByteSpan{user_hash});
+					if (!static_cast<bool>(user)) {
+						user = _cs.contactHandle(_cs.registry().create());
+						user_created = true;
 						user.emplace_or_replace<Contact::Components::ID>(user_hash);
 					}
 
@@ -339,11 +363,15 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Numeric& e) {
 					// add to channel?
 					user.emplace_or_replace<Contact::Components::IRC::UserName>(std::string{user_str});
 					user.emplace_or_replace<Contact::Components::Name>(std::string{user_str});
+
+					user_throw_event = true;
 				}
 
 				if (user.entity() != _self) {
 					user.emplace_or_replace<Contact::Components::ConnectionState>(Contact::Components::ConnectionState::State::cloud);
 					user.emplace_or_replace<Contact::Components::Self>(_self);
+
+					user_throw_event = true;
 				}
 
 				{ // add user to channel
@@ -351,6 +379,15 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Numeric& e) {
 					if (std::find(channel_user_list.begin(), channel_user_list.end(), user) == channel_user_list.end()) {
 						//std::cout << "!!!!!!!! new user in channel!\n";
 						channel_user_list.push_back(user);
+						user_throw_event = true;
+					}
+				}
+
+				if (user_throw_event) {
+					if (user_created) {
+						_cs.throwEventConstruct(user);
+					} else {
+						_cs.throwEventUpdate(user);
 					}
 				}
 			}
@@ -381,13 +418,14 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Numeric& e) {
 
 		const auto channel_name = e.params.at(1);
 		auto channel = getC(channel_name);
-		if (!channel.valid()) {
+		if (!static_cast<bool>(channel)) {
 			std::cerr << "IRCCCM error: topic for unknown channel\n";
 			return false;
 		}
 
 		const auto topic = e.params.at(2);
 		channel.emplace_or_replace<Contact::Components::StatusText>(std::string{topic}).fillFirstLineLength();
+		_cs.throwEventUpdate(channel);
 	}
 	return false;
 }
@@ -401,23 +439,23 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 
 	//std::cout << "JOIN!!!! " << e.origin << " in " << joined_channel_name << "\n";
 
+	auto& cr = _cs.registry();
+
+	bool channel_created {false};
 	auto channel = getC(e.params.front());
-	if (!channel.valid()) {
+	if (!static_cast<bool>(channel)) {
 		const auto channel_hash = getIDHash(joined_channel_name);
 		// check for empty contact by id
-		for (const auto e : _cr.view<Contact::Components::ID>()) {
-			if (_cr.get<Contact::Components::ID>(e).data == channel_hash) {
-				channel = {_cr, e};
-				break;
-			}
-		}
-		if (!channel.valid()) {
-			channel = {_cr, _cr.create()};
+		channel = _cs.getOneContactByID(_server, ByteSpan{channel_hash});
+		if (!static_cast<bool>(channel)) {
+			//channel = {_cr, _cr.create()};
+			channel = _cs.contactHandle(cr.create());
+			channel_created = true;
 			channel.emplace_or_replace<Contact::Components::ID>(channel_hash);
 		}
 		channel.emplace_or_replace<Contact::Components::ContactModel>(this);
 		channel.emplace_or_replace<Contact::Components::Parent>(_server);
-		_cr.get_or_emplace<Contact::Components::ParentOf>(_server).subs.push_back(channel);
+		cr.get_or_emplace<Contact::Components::ParentOf>(_server).subs.push_back(channel);
 		channel.emplace_or_replace<Contact::Components::ParentOf>(); // start empty
 		channel.emplace_or_replace<Contact::Components::IRC::ServerName>(std::string{_ircc.getServerName()});
 		channel.emplace_or_replace<Contact::Components::IRC::ChannelName>(std::string{joined_channel_name});
@@ -433,18 +471,22 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 	}
 	channel.emplace_or_replace<Contact::Components::ConnectionState>(Contact::Components::ConnectionState::State::cloud);
 
+	if (channel_created) {
+		_cs.throwEventConstruct(channel);
+	} else {
+		_cs.throwEventUpdate(channel);
+	}
+
 	auto user = getU(e.origin);
-	if (!user.valid()) {
+	bool user_throw_event {false};
+	bool user_created {false};
+	if (!static_cast<bool>(user)) {
 		const auto user_hash = getIDHash(e.origin);
 		// check for empty contact by id
-		for (const auto e : _cr.view<Contact::Components::ID>()) {
-			if (_cr.get<Contact::Components::ID>(e).data == user_hash) {
-				user = {_cr, e};
-				break;
-			}
-		}
-		if (!user.valid()) {
-			user = {_cr, _cr.create()};
+		user = _cs.getOneContactByID(_server, ByteSpan{user_hash});
+		if (!static_cast<bool>(user)) {
+			user = _cs.contactHandle(cr.create());
+			user_created = true;
 			user.emplace_or_replace<Contact::Components::ID>(user_hash);
 			std::cerr << "IRCCCM error: had to create joining user (self?)\n";
 		}
@@ -457,16 +499,28 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 		user.emplace_or_replace<Contact::Components::IRC::UserName>(std::string{e.origin});
 		user.emplace_or_replace<Contact::Components::Name>(std::string{e.origin});
 
+		user_throw_event = true;
+
+		// ???
 		std::cout << "### created self(?) with"
-			<< " ircn:" << _cr.get<Contact::Components::IRC::UserName>(_self).name
-			<< " ircsn:" << _cr.get<Contact::Components::IRC::ServerName>(_self).name
-			<< " id:" << bin2hex(_cr.get<Contact::Components::ID>(_self).data)
+			<< " ircn:" << cr.get<Contact::Components::IRC::UserName>(_self).name
+			<< " ircsn:" << cr.get<Contact::Components::IRC::ServerName>(_self).name
+			<< " id:" << bin2hex(cr.get<Contact::Components::ID>(_self).data)
 			<< "\n";
 	}
 
 	if (user.entity() != _self) {
 		user.emplace_or_replace<Contact::Components::ConnectionState>(Contact::Components::ConnectionState::State::cloud);
 		user.emplace_or_replace<Contact::Components::Self>(_self);
+		user_throw_event = true;
+	}
+
+	if (user_throw_event) {
+		if (user_created) {
+			_cs.throwEventConstruct(user);
+		} else {
+			_cs.throwEventUpdate(user);
+		}
 	}
 
 	{ // add user to channel
@@ -474,6 +528,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Join& e) {
 		if (std::find(channel_user_list.begin(), channel_user_list.end(), user) == channel_user_list.end()) {
 			//std::cout << "!!!!!!!! new user in channel!\n";
 			channel_user_list.push_back(user);
+			_cs.throwEventUpdate(channel);
 		}
 	}
 
@@ -488,7 +543,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Part& e) {
 
 	// e.origin // is the parting user
 	auto user = getU(e.origin);
-	if (!user.valid()) {
+	if (!static_cast<bool>(user)) {
 		// ignoring unknown users, might be caused by a bug
 		std::cerr << "ignoring unknown users, might be caused by a bug\n";
 		return false;
@@ -496,7 +551,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Part& e) {
 
 	// e.params.front() is the channel
 	auto channel = getC(e.params.front());
-	if (!channel.valid()) {
+	if (!static_cast<bool>(channel)) {
 		// ignoring unknown channel, might be caused by a bug
 		std::cerr << "ignoring unknown channel, might be caused by a bug\n";
 		return false;
@@ -507,10 +562,13 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Part& e) {
 		if (auto it = std::find(channel_user_list.begin(), channel_user_list.end(), user); it != channel_user_list.end()) {
 			//std::cout << "!!!!!!!! removing user from channel!\n";
 			channel_user_list.erase(it);
+			_cs.throwEventUpdate(channel);
 		} else {
 			//std::cout << "!!!!!!!! unknown user leaving channel!\n";
 		}
 	}
+
+	_cs.throwEventUpdate(user); // ??
 
 	return false;
 }
@@ -528,13 +586,14 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Topic& e) {
 
 	const auto channel_name = e.params.at(0);
 	auto channel = getC(channel_name);
-	if (!channel.valid()) {
+	if (!static_cast<bool>(channel)) {
 		std::cerr << "IRCCCM error: new topic for unknown channel\n";
 		return false;
 	}
 
 	const auto topic = e.params.at(1);
 	channel.emplace_or_replace<Contact::Components::StatusText>(std::string{topic}).fillFirstLineLength();
+	_cs.throwEventUpdate(channel);
 	return false;
 }
 
@@ -544,7 +603,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Quit& e) {
 	// e.params.front() is the quit reason
 
 	auto user = getU(e.origin);
-	if (!user.valid()) {
+	if (!static_cast<bool>(user)) {
 		// ignoring unknown users, might be caused by a bug
 		return false;
 	}
@@ -554,6 +613,8 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Quit& e) {
 	}
 
 	// should we remove the user from the channel?
+
+	_cs.throwEventUpdate(user);
 
 	return false;
 }
@@ -572,22 +633,32 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::CTCP_Req& e) {
 
 bool IRCClientContactModel::onEvent(const IRCClient::Events::Disconnect&) {
 	_connected = false;
-	if (!_cr.valid(_server)) {
+	auto& cr = _cs.registry();
+	if (!cr.valid(_server)) {
 		// skip if where already offline
 		return false;
 	}
-	_cr.get<Contact::Components::ConnectionState>(_server).state = Contact::Components::ConnectionState::disconnected;
+	cr.get<Contact::Components::ConnectionState>(_server).state = Contact::Components::ConnectionState::disconnected;
 
 	// HACK: by name
-	_cr.view<Contact::Components::IRC::ServerName, Contact::Components::ConnectionState>().each([this](const auto c, const auto& sn_c, auto& cs) {
+	ContactHandle4 server;
+	cr.view<Contact::Components::IRC::ServerName, Contact::Components::ConnectionState>().each([this, &server](const auto c, const auto& sn_c, auto&) {
 		// HACK: by name
 		// should be by parent instead
 		if (sn_c.name != _ircc.getServerName()) {
 			return;
 		}
 
-		cs.state = Contact::Components::ConnectionState::disconnected;
+		server = _cs.contactHandle(c);
 	});
+
+	if (!static_cast<bool>(server)) {
+		return false;
+	}
+
+	server.get_or_emplace<Contact::Components::ConnectionState>().state = Contact::Components::ConnectionState::disconnected;
+
+	_cs.throwEventUpdate(server);
 
 	return false;
 }

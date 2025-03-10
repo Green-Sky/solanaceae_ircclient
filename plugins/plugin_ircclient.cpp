@@ -34,15 +34,15 @@ SOLANA_PLUGIN_EXPORT uint32_t solana_plugin_start(struct SolanaAPI* solana_api) 
 	}
 
 	try {
-		auto* cr = PLUG_RESOLVE_INSTANCE_VERSIONED(Contact3Registry, "1");
+		auto* cs = PLUG_RESOLVE_INSTANCE(ContactStore4I);
 		auto* rmm = PLUG_RESOLVE_INSTANCE(RegistryMessageModelI);
 		auto* conf = PLUG_RESOLVE_INSTANCE(ConfigModelI);
 
 		// static store, could be anywhere tho
 		// construct with fetched dependencies
 		g_ircc = std::make_unique<IRCClient1>(*conf);
-		g_ircccm = std::make_unique<IRCClientContactModel>(*cr, *conf, *g_ircc);
-		g_irccmm = std::make_unique<IRCClientMessageManager>(*rmm, *cr, *conf, *g_ircc, *g_ircccm);
+		g_ircccm = std::make_unique<IRCClientContactModel>(*cs, *conf, *g_ircc);
+		g_irccmm = std::make_unique<IRCClientMessageManager>(*rmm, *cs, *conf, *g_ircc, *g_ircccm);
 
 		// register types
 		PLUG_PROVIDE_INSTANCE(IRCClient1, plugin_name, g_ircc.get());

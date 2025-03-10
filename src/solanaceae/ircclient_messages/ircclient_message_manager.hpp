@@ -8,7 +8,7 @@ class IRCClientMessageManager : public IRCClientEventI, public RegistryMessageMo
 	protected:
 		RegistryMessageModelI& _rmm;
 		RegistryMessageModelI::SubscriptionReference _rmm_sr;
-		Contact3Registry& _cr;
+		ContactStore4I& _cs;
 		ConfigModelI& _conf;
 		IRCClient1& _ircc;
 		IRCClient1::SubscriptionReference _ircc_sr;
@@ -17,7 +17,7 @@ class IRCClientMessageManager : public IRCClientEventI, public RegistryMessageMo
 	public:
 		IRCClientMessageManager(
 			RegistryMessageModelI& rmm,
-			Contact3Registry& cr,
+			ContactStore4I& cs,
 			ConfigModelI& conf,
 			IRCClient1& ircc,
 			IRCClientContactModel& ircccm
@@ -29,10 +29,10 @@ class IRCClientMessageManager : public IRCClientEventI, public RegistryMessageMo
 		using IRCClientEventI::onEvent;
 		using RegistryMessageModelEventI::onEvent;
 	private:
-		bool processMessage(Contact3Handle from, Contact3Handle to, std::string_view message_text, bool action);
+		bool processMessage(ContactHandle4 from, ContactHandle4 to, std::string_view message_text, bool action);
 
 	private: // mm3
-		bool sendText(const Contact3 c, std::string_view message, bool action = false) override;
+		bool sendText(const Contact4 c, std::string_view message, bool action = false) override;
 
 	private: // ircclient
 		bool onEvent(const IRCClient::Events::Channel& e) override;

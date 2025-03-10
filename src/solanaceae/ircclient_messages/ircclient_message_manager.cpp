@@ -5,6 +5,7 @@
 #include <solanaceae/ircclient_contacts/components.hpp>
 
 #include <solanaceae/contact/components.hpp>
+#include <solanaceae/contact/contact_store_i.hpp>
 #include <solanaceae/message3/components.hpp>
 #include <solanaceae/message3/registry_message_model.hpp>
 
@@ -20,11 +21,11 @@
 
 IRCClientMessageManager::IRCClientMessageManager(
 	RegistryMessageModelI& rmm,
-	Contact3Registry& cr,
+	ContactStore4I& cs,
 	ConfigModelI& conf,
 	IRCClient1& ircc,
 	IRCClientContactModel& ircccm
-) : _rmm(rmm), _rmm_sr(_rmm.newSubRef(this)), _cr(cr), _conf(conf), _ircc(ircc), _ircc_sr(_ircc.newSubRef(this)), _ircccm(ircccm) {
+) : _rmm(rmm), _rmm_sr(_rmm.newSubRef(this)), _cs(cs), _conf(conf), _ircc(ircc), _ircc_sr(_ircc.newSubRef(this)), _ircccm(ircccm) {
 	_ircc_sr
 		.subscribe(IRCClient_Event::CHANNEL)
 		.subscribe(IRCClient_Event::PRIVMSG)
@@ -39,7 +40,7 @@ IRCClientMessageManager::IRCClientMessageManager(
 IRCClientMessageManager::~IRCClientMessageManager(void) {
 }
 
-bool IRCClientMessageManager::processMessage(Contact3Handle from, Contact3Handle to, std::string_view message_text, bool action) {
+bool IRCClientMessageManager::processMessage(ContactHandle4 from, ContactHandle4 to, std::string_view message_text, bool action) {
 	const uint64_t ts = getTimeMS();
 
 	Message3Registry* reg_ptr = nullptr;
@@ -81,8 +82,10 @@ bool IRCClientMessageManager::processMessage(Contact3Handle from, Contact3Handle
 	return false;
 }
 
-bool IRCClientMessageManager::sendText(const Contact3 c, std::string_view message, bool action) {
-	if (!_cr.valid(c)) {
+bool IRCClientMessageManager::sendText(const Contact4 c, std::string_view message, bool action) {
+	const auto& cr = _cs.registry();
+
+	if (!cr.valid(c)) {
 		return false;
 	}
 
@@ -92,21 +95,21 @@ bool IRCClientMessageManager::sendText(const Contact3 c, std::string_view messag
 
 	const uint64_t ts = getTimeMS();
 
-	if (_cr.all_of<Contact::Components::TagSelfStrong>(c)) {
+	if (cr.all_of<Contact::Components::TagSelfStrong>(c)) {
 		return false; // message to self? not with irc
 	}
 
 	// test for contact irc specific components
 	// TODO: what about commands and server messages?
-	if (!_cr.any_of<Contact::Components::IRC::UserName, Contact::Components::IRC::ChannelName>(c)) {
+	if (!cr.any_of<Contact::Components::IRC::UserName, Contact::Components::IRC::ChannelName>(c)) {
 		return false;
 	}
 
 	std::string to_str;
-	if (_cr.all_of<Contact::Components::IRC::UserName>(c)) {
-		to_str = _cr.get<Contact::Components::IRC::UserName>(c).name;
+	if (cr.all_of<Contact::Components::IRC::UserName>(c)) {
+		to_str = cr.get<Contact::Components::IRC::UserName>(c).name;
 	} else {
-		to_str = _cr.get<Contact::Components::IRC::ChannelName>(c).name;
+		to_str = cr.get<Contact::Components::IRC::ChannelName>(c).name;
 	}
 
 	auto* reg_ptr = _rmm.get(c);
@@ -114,7 +117,7 @@ bool IRCClientMessageManager::sendText(const Contact3 c, std::string_view messag
 		return false; // nope
 	}
 
-	if (!_cr.all_of<Contact::Components::Self>(c)) {
+	if (!cr.all_of<Contact::Components::Self>(c)) {
 		std::cerr << "IRCCMM error: cant get self\n";
 		return false;
 	}
@@ -145,7 +148,7 @@ bool IRCClientMessageManager::sendText(const Contact3 c, std::string_view messag
 		}
 	}
 
-	const Contact3 c_self = _cr.get<Contact::Components::Self>(c).self;
+	const Contact4 c_self = cr.get<Contact::Components::Self>(c).self;
 
 	auto new_msg = Message3Handle{*reg_ptr, reg_ptr->create()};
 
@@ -178,7 +181,7 @@ bool IRCClientMessageManager::onEvent(const IRCClient::Events::Channel& e) {
 
 	// e.origin is sender
 	auto sender =  _ircccm.getU(e.origin); // assuming its always a user // aka ContactFrom
-	if (!sender.valid()) {
+	if (!static_cast<bool>(sender)) {
 		std::cerr << "IRCCMM error: channel event unknown sender\n";
 		return false;
 	}
