@@ -188,7 +188,7 @@ bool IRCClientMessageManager::onEvent(const IRCClient::Events::Channel& e) {
 
 	// e.params.at(0) is channel
 	auto channel =  _ircccm.getC(e.params.at(0)); // aka ContactTo
-	if (!channel.valid()) {
+	if (!static_cast<bool>(channel)) {
 		std::cerr << "IRCCMM error: channel event unknown channel\n";
 		return false;
 	}
@@ -207,14 +207,14 @@ bool IRCClientMessageManager::onEvent(const IRCClient::Events::PrivMSG& e) {
 
 	// e.origin is sender
 	auto from =  _ircccm.getU(e.origin); // assuming its always a user // aka ContactFrom
-	if (!from.valid()) {
+	if (!static_cast<bool>(from)) {
 		std::cerr << "IRCCMM error: privmsg event unknown sender\n";
 		return false;
 	}
 
 	// e.params.at(0) is receiver (us?)
 	auto to =  _ircccm.getU(e.params.at(0)); // aka ContactTo
-	if (!to.valid()) {
+	if (!static_cast<bool>(to)) {
 		std::cerr << "IRCCMM error: privmsg event unknown channel\n";
 		return false;
 	}
@@ -259,14 +259,14 @@ bool IRCClientMessageManager::onEvent(const IRCClient::Events::ChannelNotice& e)
 
 	// e.origin is sending user (probably)
 	auto from = _ircccm.getU(e.origin);
-	if (!from.valid()) {
+	if (!static_cast<bool>(from)) {
 		std::cerr << "IRCCMM error: channel notice event unknown sender\n";
 		return false;
 	}
 
 	// e.params.at(0) is channel
 	auto to = _ircccm.getC(e.params.at(0));
-	if (!to.valid()) {
+	if (!static_cast<bool>(to)) {
 		std::cerr << "IRCCMM error: unknown receiver\n";
 		return false;
 	}
@@ -285,14 +285,14 @@ bool IRCClientMessageManager::onEvent(const IRCClient::Events::CTCP_Action& e) {
 
 	// e.origin is sender
 	auto from = _ircccm.getU(e.origin); // assuming its always a user // aka ContactFrom
-	if (!from.valid()) {
+	if (!static_cast<bool>(from)) {
 		std::cerr << "IRCCMM error: channel event unknown sender\n";
 		return false;
 	}
 
 	// e.params.at(0) is receiver (self if pm or channel if channel)
 	auto receiver = _ircccm.getCU(e.params.at(0));
-	if (!receiver.valid()) {
+	if (!static_cast<bool>(receiver)) {
 		std::cerr << "IRCCMM error: unknown receiver\n";
 		return false;
 	}
