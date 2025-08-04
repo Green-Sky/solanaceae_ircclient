@@ -12,8 +12,6 @@
 #include <queue>
 #include <cstdint>
 
-#include <iostream> // tmp
-
 class IRCClientContactModel : public IRCClientEventI, public ContactModel4I {
 	ContactStore4I& _cs;
 	ConfigModelI& _conf;
@@ -45,6 +43,8 @@ class IRCClientContactModel : public IRCClientEventI, public ContactModel4I {
 		bool addContact(Contact4 c) override;
 		bool acceptRequest(Contact4 c, std::string_view self_name, std::string_view password) override;
 		bool leave(Contact4 c, std::string_view reason) override;
+		bool invite(Contact4 c, Contact4 to) override;
+		bool canInvite(Contact4 c, Contact4 to) override;
 
 	private:
 		// just the hash algo

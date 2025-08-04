@@ -70,11 +70,25 @@ bool IRCClientContactModel::addContact(Contact4 c) {
 	return false;
 }
 
+// irc provides invites
 bool IRCClientContactModel::acceptRequest(Contact4 c, std::string_view self_name, std::string_view password) {
+	// TODO: implement
 	return false;
 }
 
 bool IRCClientContactModel::leave(Contact4 c, std::string_view reason) {
+	// TODO: implement
+	return false;
+}
+
+// irc provides invite
+bool IRCClientContactModel::invite(Contact4 c, Contact4 to) {
+	// TODO: implement
+	return false;
+}
+
+bool IRCClientContactModel::canInvite(Contact4 c, Contact4 to) {
+	// TODO: implement
 	return false;
 }
 
