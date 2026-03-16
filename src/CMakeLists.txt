@@ -23,6 +23,9 @@ add_library(solanaceae_ircclient_contacts
 	./solanaceae/ircclient_contacts/components.hpp
 	./solanaceae/ircclient_contacts/components_id.inl
 
+	./solanaceae/ircclient_contacts/irc_components_to_string.hpp
+	./solanaceae/ircclient_contacts/irc_components_to_string.cpp
+
 	./solanaceae/ircclient_contacts/ircclient_contact_model.hpp
 	./solanaceae/ircclient_contacts/ircclient_contact_model.cpp
 )

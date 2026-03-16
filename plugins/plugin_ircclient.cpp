@@ -6,6 +6,8 @@
 #include <solanaceae/ircclient_contacts/ircclient_contact_model.hpp>
 #include <solanaceae/ircclient_messages/ircclient_message_manager.hpp>
 
+#include <solanaceae/ircclient_contacts/irc_components_to_string.hpp>
+
 #include <entt/entt.hpp>
 #include <entt/fwd.hpp>
 
@@ -15,6 +17,7 @@
 static std::unique_ptr<IRCClient1> g_ircc = nullptr;
 static std::unique_ptr<IRCClientContactModel> g_ircccm = nullptr;
 static std::unique_ptr<IRCClientMessageManager> g_irccmm = nullptr;
+static ContactStore4I* g_cs_ptr = nullptr;
 
 constexpr const char* plugin_name = "IRCClient";
 
@@ -36,20 +39,22 @@ SOLANA_PLUGIN_EXPORT uint32_t solana_plugin_start(struct SolanaAPI* solana_api) 
 	}
 
 	try {
-		auto* cs = PLUG_RESOLVE_INSTANCE(ContactStore4I);
+		g_cs_ptr = PLUG_RESOLVE_INSTANCE(ContactStore4I);
 		auto* rmm = PLUG_RESOLVE_INSTANCE(RegistryMessageModelI);
 		auto* conf = PLUG_RESOLVE_INSTANCE(ConfigModelI);
 
 		// static store, could be anywhere tho
 		// construct with fetched dependencies
 		g_ircc = std::make_unique<IRCClient1>(*conf);
-		g_ircccm = std::make_unique<IRCClientContactModel>(*cs, *conf, *g_ircc);
-		g_irccmm = std::make_unique<IRCClientMessageManager>(*rmm, *cs, *conf, *g_ircc, *g_ircccm);
+		g_ircccm = std::make_unique<IRCClientContactModel>(*g_cs_ptr, *conf, *g_ircc);
+		g_irccmm = std::make_unique<IRCClientMessageManager>(*rmm, *g_cs_ptr, *conf, *g_ircc, *g_ircccm);
 
 		// register types
 		PLUG_PROVIDE_INSTANCE(IRCClient1, plugin_name, g_ircc.get());
 		PLUG_PROVIDE_INSTANCE(IRCClientContactModel, plugin_name, g_ircccm.get());
 		PLUG_PROVIDE_INSTANCE(IRCClientMessageManager, plugin_name, g_irccmm.get());
+
+		Contact::registerIRCComponents2Str(*g_cs_ptr);
 	} catch (const ResolveException& e) {
 		std::cerr << "PLUGIN " << plugin_name << " " << e.what << "\n";
 		return 2;
@@ -60,6 +65,8 @@ SOLANA_PLUGIN_EXPORT uint32_t solana_plugin_start(struct SolanaAPI* solana_api) 
 
 SOLANA_PLUGIN_EXPORT void solana_plugin_stop(void) {
 	std::cout << "PLUGIN " << plugin_name << " STOP()\n";
+
+	Contact::unregisterIRCComponents2Str(*g_cs_ptr);
 
 	g_irccmm.reset();
 	g_ircccm.reset();
