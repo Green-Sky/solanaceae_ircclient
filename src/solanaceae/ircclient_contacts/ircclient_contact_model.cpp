@@ -205,7 +205,7 @@ bool IRCClientContactModel::onEvent(const IRCClient::Events::Connect& e) {
 				const auto self_hash = getIDHash(e.params.front());
 
 				// check for empty contact by id
-				_server = _cs.getOneContactByID(_server, ByteSpan{self_hash});
+				_self = _cs.getOneContactByID(_server, ByteSpan{self_hash});
 			}
 			if (!cr.valid(_self)) {
 				_self = cr.create();
